@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+  
+  <!-- Use rotating plane as a loader animation until app is loaded -->
+  <style>
+    #app .sk-rotating-plane, [v-cloak]>* { display: none }
+    body { background: #ffffff; color: #6A76AB; }
+    #app[v-cloak] .sk-rotating-plane { display: block; background-color: #6A76AB; }
+  </style>
+
+  <link href="css/spin.css" rel="stylesheet">
+  <link href="css/mdi.min.css" rel="stylesheet">
+  <link href="css/roboto.css" rel="stylesheet" />
+  <link href="css/vuetify.min.css" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+</head>
+
+<body>
+  <div id="app" v-cloak>
+    <div class="sk-rotating-plane"></div>
+    <v-app>
+      <v-card flat height="100%">
+        <v-app-bar color="#6A76AB" dark>
+          <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
+          <v-toolbar-title>Mio Controller</v-toolbar-title>
+
+          <div class="flex-grow-1"></div>
+
+          <v-btn icon @click="init_websocket()">
+            <v-icon>mdi-autorenew</v-icon>
+          </v-btn>
+          <v-btn icon>
+            <v-icon>{{ connectionIcon }}</v-icon>
+          </v-btn>
+          <!--  <v-btn icon>
+            <v-icon>mdi-dots-vertical</v-icon>
+          </v-btn> -->
+
+          <template v-slot:extension>
+            <v-tabs v-model="tab" background-color="transparent" grow>
+              <v-tab v-for="i in tabs" :key="i" :href="`#tab-${i}`" @click="get_midi_mappings(tabButtons[i-1])"
+                class="headline">
+                {{ tabButtons[i-1].name }}
+              </v-tab>
+            </v-tabs>
+          </template>
+
+        </v-app-bar>
+
+        <v-tabs-items v-model="tab" flat>
+          <v-tab-item v-for="i in tabs" :key="i" :value="'tab-' + i" class="ma-5" flat>
+            <v-row flat>
+              <v-col v-for="(button, index) in tabButtons[i-1].buttons" :key="index" cols="12" sm="4">
+                <v-btn large tile width=100% height=80px ma-0 :color='button_color(button)' class="white--text title"
+                  @click="button_send_midi_mapping(tabButtons[i-1],button)"> {{ button.name }}
+                </v-btn>
+              </v-col>
+            </v-row>
+          </v-tab-item>
+        </v-tabs-items>
+
+        <v-navigation-drawer v-model="drawer" absolute temporary>
+          <v-list-item>
+            <v-list-item-content>
+              <v-list-item-title>Extra tools</v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+          <v-divider></v-divider>
+          <v-list dense>
+            <v-list-item v-for="item in drawerItems" :key="item.title" link>
+              <v-list-item-icon>
+                <v-icon>{{ item.icon }}</v-icon>
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>{{ item.title }}</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </v-navigation-drawer>
+
+      </v-card>
+    </v-app>
+  </div>
+
+  <script src="src/vue.min.js"></script>
+  <script src="src/vuetify.min.js"></script>
+
+  <script>
+
+    const MesssageType = {
+      // Sent
+      SET_PORTS: 0,
+      GET_PORTS: 1,
+      // Received
+      CONNECTED: 100,
+      PORT_MAP: 101
+    }
+
+    const vue = new Vue({
+      el: "#app",
+      vuetify: new Vuetify(),
+      data() {
+        return {
+          tabButtons: [
+            {
+              name: "Nord Stage", source: 43,
+              buttons: [
+                { name: "D110", destination: 0, state: "off" },
+                { name: "M1000", destination: 1, state: "off" },
+                { name: "K5000R", destination: 2, state: "off" },
+                { name: "D110", destination: 0, state: "off" },
+                { name: "M1000", destination: 1, state: "off" },
+                { name: "K5000R", destination: 2, state: "off" }
+              ]
+            },
+            {
+              name: "Korg Kronos", source: 44,
+              buttons: [
+                { name: "D110", destination: 0, state: "off" },
+                { name: "M1000", destination: 1, state: "off" }
+              ]
+            }
+          ],
+          tab: null,
+          drawer: null,
+          drawerItems: [
+            { title: 'Home', icon: 'mdi-heart' },
+            { title: 'Save', icon: 'mdi-floppy' },
+          ],
+          connectionIP: undefined,
+          connection: undefined,
+          connectionIcon: 'mdi-dots-horizontal-circle'
+        }
+      },
+      methods: {
+        button_color(button) {
+          return button.state === 'on' ? '#6A76AB' : 'grey darken-5'
+        },
+
+        init_websocket() {
+
+          if (this.connection !== undefined) {
+            if (this.connection.readyState === 1) {
+              this.connection.close()
+            }
+          }
+
+          var websocketIP = this.connectionIP === undefined ? location.host : this.connectionIP
+          if (websocketIP === "") {
+            console.log("Cannot determine the host - use predefined one!")
+            websocketIP = "192.168.0.52"
+          }
+          console.log("Connecting websocket: " + websocketIP + ":81/")
+          this.connection = new WebSocket("ws://" + websocketIP + ":81/", ["arduino"])
+          this.connectionIcon = 'mdi-dots-horizontal-circle'
+
+          this.connection.onopen = (e) => {
+            this.connection.send("Connect " + new Date());
+            this.connectionIcon = 'mdi-checkbox-marked-circle'
+          }
+          this.connection.onclose = (e) => {
+            this.connection = undefined
+            this.connectionIcon = 'mdi-alert-circle'
+            //TODO: add snackbar
+          }
+          this.connection.onerror = (error) => {
+            console.log("WebSocket Error ", error);
+            this.connectionIcon = 'mdi-alert-circle'
+            //TODO: add snackbar
+          }
+          this.connection.onmessage = (e) => {
+            console.log("Server: ", e.data);
+            this.parse_websocket_messaga(e.data)
+          }
+        },
+
+        send_message(obj) {
+          if (this.connection.readyState === 1) {
+            this.connection.send(JSON.stringify(obj))
+          } else {
+            console.log("No connection. Websocket state:" + connection.readyState)
+          }
+        },
+
+        button_send_midi_mapping(tab_button, button) {
+          this.send_midi_mapping(tab_button.source, button.destination, button.state === 'off' ? 1 : 0)
+        },
+
+        send_midi_mapping(source, destination, enable) {
+          var obj = { message_type: MesssageType.SET_PORTS, source: source, destination: destination, enable: enable }
+          this.send_message(obj)
+        },
+
+        get_midi_mappings(tab_button) {
+          var obj = { message_type: MesssageType.GET_PORTS, source: tab_button.source }
+          this.send_message(obj)
+        },
+
+        init_mappings() {
+          this.get_midi_mappings(this.tabButtons[0])
+        },
+
+        parse_websocket_messaga(json) {
+          try {
+            obj = JSON.parse(json)
+            switch (obj.message_type) {
+              case MesssageType.PORT_MAP:
+                tabButton = this.tabButtons.filter((tabButton) => { return tabButton.source === obj.source })
+                if (tabButton.length === 0) { console.log("no tabbutton found!"); return }
+                tabButton[0].buttons.forEach(button => { button.state = obj.destinations.includes(button.destination) ? 'on' : 'off' })
+                break
+              case MesssageType.CONNECTED:
+                this.init_mappings()
+                break
+              default:
+                console.log("unknown message type")
+                break
+            }
+          } catch (e) {
+            console.log("Error:" + e)
+          }
+        }
+      },
+      computed: {
+        tabs: {
+          get: function () {
+            return this.tabButtons.length
+          }
+        }
+      },
+      created() {
+        this.init_websocket()
+      }
+    });
+  </script>
+
+</body>
+</html>
