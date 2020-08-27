@@ -12,5 +12,6 @@ Add file **WifiConfig.h**:
 #define WIFI_SSID "my_wifi_ssid" // your network SSID (name)
 #define WIFI_PASSWORD "password" // your network password
 ```
+IP address of the Mio 10 is hardcoded in ```MioRemote.ino```
 
 Currently the routing coniguration is done by editing ```index.html``` 
