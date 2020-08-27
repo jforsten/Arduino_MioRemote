@@ -8,7 +8,8 @@
                 "C:\\Users\\jforsten\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.5.2\\**",
                 "C:\\Users\\jforsten\\Documents\\Arduino\\libraries\\**",
                 "C:\\Users\\jforsten\\Documents\\Arduino\\hardware\\**",
-                "C:\\Users\\jforsten\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.5.2\\variants\\nodemcu\\**"
+                "C:\\Users\\jforsten\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.5.2\\variants\\nodemcu\\**",
+                "C:\\Users\\jforsten\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\**"
             ],
             "forcedInclude": [],
             "intelliSenseMode": "msvc-x64",
